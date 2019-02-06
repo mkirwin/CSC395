@@ -48,9 +48,34 @@ int main(int argc, char** argv) {
     // We are now attached to the child process
     printf("Attached!\n");
 
-    // Now repeatedly resume and trace the program
+    // TODO: Only need to check if a system call is allowed before it executes.
     bool running = true;
     int last_signal = 0;
+    // keep running program
+    if (ptrace(PTRACE_SYSCALL, child_pid, NULL, last_signal) == -1) {
+        perror("ptrace CONT failed");
+        exit(2);
+    }
+
+    // No signal to send yet?
+    last_signal = 0;
+
+    // Wait for the child to stop again (here?)
+    if (waitpid(child_pid, &status, 0) != child_pid) {
+       perror("waitpid failed");
+       exit(2);
+    }
+
+    // TODO: are we just getting information after the call is made?
+
+
+
+
+
+    ///////////////////////////////////////////////////////////////////////////////
+    // Now repeatedly resume and trace the program
+    //bool running = true;
+    //int last_signal = 0;
     while(running) {
       // Continue the process, delivering the last signal we received (if any)
       if(ptrace(PTRACE_SYSCALL, child_pid, NULL, last_signal) == -1) {
