@@ -1,4 +1,5 @@
 #include <stdbool.h>
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -8,7 +9,7 @@
 #include <sys/types.h>
 #include <sys/user.h>
 
-void handle_forbidden(size_t syscall_num);
+void handle_forbidden(size_t syscall_num, char* error_msg, pid_t pid);
 
 int main(int argc, char** argv) {
     // Call fork to create a child process
@@ -31,8 +32,8 @@ int main(int argc, char** argv) {
         // TODO: Do some work in the sandboxed child process here
         //       As an example, just run `ls`.
         //if(execlp("ls", "ls", NULL)) {
-		if (execlp("cd", "cd", NULL)) {
-			perror("execlp failed");
+        if (execlp("pwd", "pwd", NULL)) {
+            perror("execlp failed");
             exit(2);
         }
 
@@ -94,33 +95,27 @@ int main(int argc, char** argv) {
 
                     // Get the system call number
                     size_t syscall_num = regs.orig_rax;
-                    
+                    char* error_msg = "Attempted to %s with insufficient permission";
                     switch (syscall_num) {
-						// chdir: trying to change directory
-                        case 1 :
-						printf("KILL OFF 1!!1\n\n");
-						perror("TRIED TO CALL 1\n");
-                        kill(child_pid, SIGKILL);
-						printf("\n\n");
-						exit(126);
-						running = false;
-						break;
 
-						case 80 : // (chdir) Change directory
-						printf("chdir: forbidden directory change.\n\n");
-						perror("TRIED TO CALL 80\n");
-						kill(child_pid, SIGKILL);
-						exit(126);
-						running = false;
-						break;
+                        case 0 : // (read) Read file
+                            handle_forbidden(syscall_num, "Attempted to read with insufficient permission.\n", child_pid);
+                            break;
 
-						case 14 : // (chdir) Change directory
-						printf("FORBIDDEN \n\n");
-						perror("TRIED TO CALL 14\n");
-						kill(child_pid, SIGKILL);
-						exit(126);
-						running = false;
-						break;
+                        case 1 : // (write) Write file
+                            handle_forbidden(syscall_num, "Attempted to write with insufficient permission.\n", child_pid);
+                            break;
+
+                        case 80 : // (chdir) Change directory
+                            handle_forbidden(syscall_num, "Attempted to change directories with insufficient permission.\n", child_pid);
+                            break;
+
+                        case 83 : // (mkdir) Make directory  
+                            handle_forbidden(syscall_num, "Attempted to make a directory with insufficient permission.\n", child_pid);
+                            break;
+                        
+                        case 197 ... 198 : // (removexattr, lremovexattr)
+                            handle_forbidden(syscall_num, "Attempted to remove a file with insufficient permission.\n", child_pid);
 
                     }
 
@@ -141,6 +136,11 @@ int main(int argc, char** argv) {
 
         return 0;
     }
-}
+    }
 
+    void handle_forbidden(size_t syscall_num, char* error_msg, pid_t pid) {
+        printf("%s", error_msg);
+        kill(pid, SIGKILL);
+        exit(126); 
+    }
 
