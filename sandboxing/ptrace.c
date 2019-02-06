@@ -33,7 +33,7 @@ int main(int argc, char** argv) {
       exit(2);
     }
 
-  } else {
+  } else { // parent code
     // Wait for the child to stop
     int status;
     int result;
