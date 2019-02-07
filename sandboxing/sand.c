@@ -99,6 +99,8 @@ int main(int argc, char** argv) {
 					bool canFork = true;
 					bool canExec = true;
 					bool canRead = true; // TODO: check directory?
+					bool canWrite = true; // TODO: Check rw and directory?
+					bool canSignal = true;
 
 
 
@@ -115,7 +117,11 @@ int main(int argc, char** argv) {
 							break;
 
 						case 1 : // (write) Write file
+							if (!canWrite) {
 							handle_forbidden(syscall_num, "Attempted to write with insufficient permission.\n", child_pid);
+							} else {
+								printf("PERMISSION GRANTED TO WRITE");
+							}
 							break;
 
 						case 80 : // (chdir) Change directory
@@ -133,7 +139,11 @@ int main(int argc, char** argv) {
 
 							// TODO: Sending signals to other processes
 						case 62 : // (kill) Send signals to other processes
-							handle_forbidden(syscall_num, "Attempted to send signal to another process with insufficient permission.\n", child_pid);
+							if (!canSignal) {
+								handle_forbidden(syscall_num, "Attempted to send signal to another process with insufficient permission.\n", child_pid);
+							} else {
+								printf("PERMISSION GRANTED TO SEND SIGNALS TO OTHER PROCESSES");
+							}
 							break;
 
 							// fork, or maybe clone?
@@ -151,7 +161,11 @@ int main(int argc, char** argv) {
 							break;
 
 						case 41 : // (fork) TODO: Do i need to block whole range? thru 55
-							handle_forbidden(syscall_num, "Attempted to perform a socket operation with insufficient permission.\n", child_pid);
+							if (!canFork) {
+								handle_forbidden(syscall_num, "Attempted to perform a socket operation with insufficient permission.\n", child_pid);
+							} else {
+								printf("PERMISSION GRANTED TO FORK");
+							}
 							break;
 
 					}

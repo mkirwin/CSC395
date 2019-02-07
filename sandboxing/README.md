@@ -4,4 +4,7 @@
 
 ## Capabilities
 
-## Why the additional one
+## Additional capability and rationale
+* I chose to optionally grant permission to signal other programs. 
+
+## Tests 
