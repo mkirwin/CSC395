@@ -1,5 +1,4 @@
 #include <stdbool.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -113,9 +112,24 @@ int main(int argc, char** argv) {
                         case 83 : // (mkdir) Make directory  
                             handle_forbidden(syscall_num, "Attempted to make a directory with insufficient permission.\n", child_pid);
                             break;
-                        
+
                         case 197 ... 198 : // (removexattr, lremovexattr)
                             handle_forbidden(syscall_num, "Attempted to remove a file with insufficient permission.\n", child_pid);
+
+                            // TODO: Sending signals to other processes
+                        case 62 : // (kill) Send signals to other processes
+                            handle_forbidden(syscall_num, "Attempted to send signal to another process with insufficient permission.\n", child_pid);
+
+                            // fork, or maybe clone?
+                        case 56 ... 58 :
+                            handle_forbidden(syscall_num, "Attempted to fork a process with insufficient permission.\n", child_pid);
+
+                            // exec
+                        case 59 :
+                            handle_forbidden(syscall_num, "Attempted to execute a process with insufficient permission.\n", child_pid);
+
+						case 41 : // (fork) TODO: Do i need to block whole range? thru 55
+                            handle_forbidden(syscall_num, "Attempted to perform a socket operation with insufficient permission.\n", child_pid);
 
                     }
 
@@ -139,7 +153,9 @@ int main(int argc, char** argv) {
     }
 
     void handle_forbidden(size_t syscall_num, char* error_msg, pid_t pid) {
+		printf("Attempted to ");
         printf("%s", error_msg);
+		printf("without sufficient permission.");
         kill(pid, SIGKILL);
         exit(126); 
     }
