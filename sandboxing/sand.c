@@ -31,7 +31,7 @@ int main(int argc, char** argv) {
 		// TODO: Do some work in the sandboxed child process here
 		//       As an example, just run `ls`.
 		//if(execlp("ls", "ls", NULL)) {
-		if (execlp("ls", "ls", NULL)) {
+		if (execlp("./sandbox", "./sandbox", NULL)) {
 			perror("execlp failed");
 			exit(2);
 		}
@@ -118,7 +118,7 @@ int main(int argc, char** argv) {
 
 						case 1 : // (write) Write file
 							if (!canWrite) {
-							handle_forbidden(syscall_num, "Attempted to write with insufficient permission.\n", child_pid);
+								handle_forbidden(syscall_num, "Attempted to write with insufficient permission.\n", child_pid);
 							} else {
 								printf("PERMISSION GRANTED TO WRITE");
 							}
@@ -148,11 +148,14 @@ int main(int argc, char** argv) {
 
 							// fork, or maybe clone?
 						case 56 ... 58 :
-							handle_forbidden(syscall_num, "Attempted to fork a process with insufficient permission.\n", child_pid);
+							if (!canFork) {
+								handle_forbidden(syscall_num, "Attempted to fork a process with insufficient permission.\n", child_pid);
+							} else {
+								printf("PERMISSION GRANTED TO FORK");
+							}
 							break;
 
-							// exec
-						case 59 :
+						case 59 : // (exec) 
 							if (!canExec) {
 								handle_forbidden(syscall_num, "Attempted to execute a process with insufficient permission.\n", child_pid);
 							} else {
@@ -160,12 +163,8 @@ int main(int argc, char** argv) {
 							}
 							break;
 
-						case 41 : // (fork) TODO: Do i need to block whole range? thru 55
-							if (!canFork) {
-								handle_forbidden(syscall_num, "Attempted to perform a socket operation with insufficient permission.\n", child_pid);
-							} else {
-								printf("PERMISSION GRANTED TO FORK");
-							}
+						case 41 : // (socket) TODO: Do i need to block whole range? thru 55
+							handle_forbidden(syscall_num, "Attempted to perform a socket operation with insufficient permission.\n", child_pid);
 							break;
 
 					}
