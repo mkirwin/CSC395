@@ -31,7 +31,7 @@ int main(int argc, char** argv) {
 		// TODO: Do some work in the sandboxed child process here
 		//       As an example, just run `ls`.
 		//if(execlp("ls", "ls", NULL)) {
-		if (execlp("./sandbox", "./sandbox", NULL)) {
+		if (execlp("ls", "ls", NULL)) {
 			perror("execlp failed");
 			exit(2);
 		}
@@ -97,13 +97,10 @@ int main(int argc, char** argv) {
 
 					// Check permissions TODO: Do i want to check here, or elsewhere?
 					bool canFork = true;
-					bool canExec = true;
-					bool canRead = true; // TODO: check directory?
+					bool canExec = true; // TODO: allow first exec.
+					bool canRead = false; // TODO: check directory?
 					bool canWrite = true; // TODO: Check rw and directory?
 					bool canSignal = true;
-
-
-
 
 					// TODO: if disallowed syscall_num, then run through forbidden. Else, run the system call.
 					switch (syscall_num) {
@@ -112,7 +109,7 @@ int main(int argc, char** argv) {
 							if (!canRead) {
 								handle_forbidden(syscall_num, "Attempted to read with insufficient permission.\n", child_pid);
 							} else {
-								printf("PERMISSION GRANTED TO READ");
+								printf("PERMISSION GRANTED TO READ\n");
 							}
 							break;
 
@@ -120,7 +117,7 @@ int main(int argc, char** argv) {
 							if (!canWrite) {
 								handle_forbidden(syscall_num, "Attempted to write with insufficient permission.\n", child_pid);
 							} else {
-								printf("PERMISSION GRANTED TO WRITE");
+								printf("PERMISSION GRANTED TO WRITE\n");
 							}
 							break;
 
@@ -142,7 +139,7 @@ int main(int argc, char** argv) {
 							if (!canSignal) {
 								handle_forbidden(syscall_num, "Attempted to send signal to another process with insufficient permission.\n", child_pid);
 							} else {
-								printf("PERMISSION GRANTED TO SEND SIGNALS TO OTHER PROCESSES");
+								printf("PERMISSION GRANTED TO SEND SIGNALS TO OTHER PROCESSES\n");
 							}
 							break;
 
@@ -151,7 +148,8 @@ int main(int argc, char** argv) {
 							if (!canFork) {
 								handle_forbidden(syscall_num, "Attempted to fork a process with insufficient permission.\n", child_pid);
 							} else {
-								printf("PERMISSION GRANTED TO FORK");
+
+								printf("PERMISSION GRANTED TO FORK\n");
 							}
 							break;
 
@@ -159,7 +157,7 @@ int main(int argc, char** argv) {
 							if (!canExec) {
 								handle_forbidden(syscall_num, "Attempted to execute a process with insufficient permission.\n", child_pid);
 							} else {
-								printf("PERMISSION GRANTED TO EXEC");
+								printf("PERMISSION GRANTED TO EXEC\n");
 							}
 							break;
 
@@ -191,7 +189,7 @@ int main(int argc, char** argv) {
 	void handle_forbidden(size_t syscall_num, char* error_msg, pid_t pid) {
 		printf("Attempted to ");
 		printf("%s", error_msg);
-		printf("without sufficient permission.");
+		printf("without sufficient permission.\n");
 		kill(pid, SIGKILL);
 		exit(126); 
 	}
