@@ -1,26 +1,50 @@
 #include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>
 #include <unistd.h>
 #include <asm/unistd.h>
 #include <sys/ptrace.h>
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/user.h>
+bool canFork = false;
+bool canExec = false; // TODO: allow first exec.
+bool canRead = true; // TODO: check directory?
+bool canWrite = true; // TODO: Check rw and directory?
+bool canSignal = true;
 
 void handle_forbidden(size_t syscall_num, char* error_msg, pid_t pid);
-void parse_args(int argc, char** argv);
+void parse_args(int argc, char** argv, bool* canFork, bool* canExec, bool* canRead, bool* canWrite, bool* canSignal);
 
-void parse_args(int argc, char** argv) {
-     printf("******%d arguments total.********\n", argc);
-     for (int i = 0; i <= argc; i++) {
-     printf(argv[i]);
+void parse_args(int argc, char** argv, bool* canFork, bool* canExec, bool* canRead, bool* canWrite, bool* canSignal) {
+  printf("******%d arguments total.********\n", argc);
+  for (int i = 0; i <= argc; i++) {
+    printf(argv[i]);
 
-     if (i < argc) printf(", ");
-     if (argv[i] == NULL) printf("NULL");
-     }
-     printf("\n");
-/////////////////////////////////////////////////////////////////////////
+    if (i < argc) printf(", ");
+    if (argv[i] == NULL) printf("NULL");
+  }
+  printf("\n");
+  /////////////////////////////////////////////////////////////////////////
+  for (int i = 1; i < argc; i++) {
+    if (strcmp(argv[i], "--fork") == 0) {
+      *canFork = true;
+      printf("canFork SET TO TRUE.\n");
+    } else if (strcmp(argv[i], "--exec") == 0) {
+      *canExec = true;
+      printf("canExec SET TO TRUE.\n");
+    } else if (strcmp(argv[i], "--read") == 0) {
+      *canRead = true;
+      printf("canRead SET TO TRUE.\n");
+    } else if (strcmp(argv[i], "--read-write") == 0) { //TODO, probably need to combine read and write cases.
+      *canWrite = true;
+      printf("canWrite SET TO TRUE.\n");
+    } else if (strcmp(argv[i], "--signal") == 0) {
+      *canSignal = true;
+      printf("canSignal SET TO TRUE.\n");
+    }
+  }
   if (argc > 1) { // change this so "1" is really where the stuff starts.
     if (execvp(argv[1], &(argv[1]))) {
       perror("execvp failed");
@@ -53,17 +77,17 @@ int main(int argc, char** argv) {
     // TODO: Do some work in the sandboxed child process here
     //       As an example, just run `ls`.
 
-    parse_args(argc, argv); // ** HERE ***
-/* // code inline, rather than in a function
-    if (argc > 1) {
+    parse_args(argc, argv, &canFork, &canExec, &canRead, &canWrite, &canSignal); // ** HERE ***
+    /* // code inline, rather than in a function
+       if (argc > 1) {
 
-      if (execvp(argv[1], &(argv[1]))) {
-        perror("execvp failed");
-        exit(2);
-      }
-    } else {
-      perror("No program provided to sandbox/Not enough arguments.");
-    }
+       if (execvp(argv[1], &(argv[1]))) {
+       perror("execvp failed");
+       exit(2);
+       }
+       } else {
+       perror("No program provided to sandbox/Not enough arguments.");
+       }
        if (execlp("ls", "ls", "-a", NULL)) {
        perror("execlp failed");
        exit(2);
@@ -131,11 +155,6 @@ int main(int argc, char** argv) {
           size_t syscall_num = regs.orig_rax;
 
           // Check permissions TODO: Do i want to check here, or elsewhere?
-          bool canFork = true;
-          bool canExec = false; // TODO: allow first exec.
-          bool canRead = true; // TODO: check directory?
-          bool canWrite = true; // TODO: Check rw and directory?
-          bool canSignal = true;
 
           // TODO: if disallowed syscall_num, then run through forbidden. Else, run the system call.
           switch (syscall_num) {
