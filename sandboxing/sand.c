@@ -12,15 +12,16 @@ void handle_forbidden(size_t syscall_num, char* error_msg, pid_t pid);
 void parse_args(int argc, char** argv);
 
 void parse_args(int argc, char** argv) {
-  printf("******%d arguments total.********\n", argc);
-  for (int i = 0; i <= argc; i++) {
-    printf(argv[i]);
+/*
+     printf("******%d arguments total.********\n", argc);
+     for (int i = 0; i <= argc; i++) {
+     printf(argv[i]);
 
-    if (i < argc-1) printf(", ");
-    if (argv[i] == NULL) printf("NULL");
-  }
-  printf("\n");
-
+     if (i < argc-1) printf(", ");
+     if (argv[i] == NULL) printf("NULL");
+     }
+     printf("\n");
+*/
   if (argc > 1) {
     if (execvp(argv[1], &(argv[1]))) {
       perror("execvp failed");
@@ -53,8 +54,8 @@ int main(int argc, char** argv) {
     // TODO: Do some work in the sandboxed child process here
     //       As an example, just run `ls`.
 
-    //parse_args(argc, argv); // ** HERE ***
-    // old ls code, now things run in parse_args
+    parse_args(argc, argv); // ** HERE ***
+/*
     if (argc > 1) {
 
       if (execvp(argv[1], &(argv[1]))) {
@@ -64,7 +65,6 @@ int main(int argc, char** argv) {
     } else {
       perror("No program provided to sandbox/Not enough arguments.");
     }
-    /*
        if (execlp("ls", "ls", "-a", NULL)) {
        perror("execlp failed");
        exit(2);
@@ -133,7 +133,7 @@ int main(int argc, char** argv) {
 
           // Check permissions TODO: Do i want to check here, or elsewhere?
           bool canFork = true;
-          bool canExec = false; // TODO: allow first exec.
+          bool canExec = true; // TODO: allow first exec.
           bool canRead = true; // TODO: check directory?
           bool canWrite = true; // TODO: Check rw and directory?
           bool canSignal = true;
