@@ -53,9 +53,17 @@ int main(int argc, char** argv) {
     // TODO: Do some work in the sandboxed child process here
     //       As an example, just run `ls`.
 
-    parse_args(argc, argv); // ** HERE **
+    //parse_args(argc, argv); // ** HERE ***
     // old ls code, now things run in parse_args
-    //if(execlp("ls", "ls", NULL)) {
+    if (argc > 1) {
+
+      if (execvp(argv[1], &(argv[1]))) {
+        perror("execvp failed");
+        exit(2);
+      }
+    } else {
+      perror("No program provided to sandbox/Not enough arguments.");
+    }
     /*
        if (execlp("ls", "ls", "-a", NULL)) {
        perror("execlp failed");
@@ -80,6 +88,7 @@ int main(int argc, char** argv) {
 
     // Now repeatedly resume and trace the program
     bool running = true;
+    bool isFirstRun = true; // Needed to allow first exec.
     int last_signal = 0;
     while(running) {
       // Continue the process, delivering the last signal we received (if any)
@@ -123,11 +132,11 @@ int main(int argc, char** argv) {
           size_t syscall_num = regs.orig_rax;
 
           // Check permissions TODO: Do i want to check here, or elsewhere?
-          bool canFork = false;
-          bool canExec = true; // TODO: allow first exec.
-          bool canRead = false; // TODO: check directory?
-          bool canWrite = false; // TODO: Check rw and directory?
-          bool canSignal = false;
+          bool canFork = true;
+          bool canExec = false; // TODO: allow first exec.
+          bool canRead = true; // TODO: check directory?
+          bool canWrite = true; // TODO: Check rw and directory?
+          bool canSignal = true;
 
           // TODO: if disallowed syscall_num, then run through forbidden. Else, run the system call.
           switch (syscall_num) {
@@ -172,7 +181,7 @@ int main(int argc, char** argv) {
 
               // fork, or maybe clone?
             case 56 ... 58 :
-              if (!canFork) {
+              if (!canFork) { // (fork, clone)
                 handle_forbidden(syscall_num, "Attempted to fork a process with insufficient permission.\n", child_pid);
               } else {
 
@@ -181,9 +190,13 @@ int main(int argc, char** argv) {
               break;
 
             case 59 : // (exec) 
-              if (!canExec) {
+              if (!canExec && !isFirstRun) {
                 handle_forbidden(syscall_num, "Attempted to execute a process with insufficient permission.\n", child_pid);
               } else {
+                if (isFirstRun) {
+                  isFirstRun = false;
+                  printf("SWITCHING FROM FIRST RUN.\n");
+                }
                 printf("PERMISSION GRANTED TO EXEC\n");
               }
               break;
@@ -198,12 +211,13 @@ int main(int argc, char** argv) {
           // Print the systam call number and register values
           // The meanings of registers will depend on the system call.
           // Refer to the table at https://filippo.io/linux-syscall-table/
-          printf("Program made system call %lu.\n", syscall_num);
-          printf("  %%rdi: 0x%llx\n", regs.rdi);
-          printf("  %%rsi: 0x%llx\n", regs.rsi);
-          printf("  %%rdx: 0x%llx\n", regs.rdx);
-          printf("  ...\n");
-
+          /*
+             printf("Program made system call %lu.\n", syscall_num);
+             printf("  %%rdi: 0x%llx\n", regs.rdi);
+             printf("  %%rsi: 0x%llx\n", regs.rsi);
+             printf("  %%rdx: 0x%llx\n", regs.rdx);
+             printf("  ...\n");
+             */
           last_signal = 0;
         }
       }
@@ -211,13 +225,13 @@ int main(int argc, char** argv) {
 
     return 0;
   }
-  }
+}
 
-  void handle_forbidden(size_t syscall_num, char* error_msg, pid_t pid) {
-    printf("Attempted to ");
-    printf("%s", error_msg);
-    printf("without sufficient permission.\n");
-    kill(pid, SIGKILL);
-    exit(126); 
-  }
+void handle_forbidden(size_t syscall_num, char* error_msg, pid_t pid) {
+  printf("Attempted to ");
+  printf("%s", error_msg);
+  printf("without sufficient permission.\n");
+  kill(pid, SIGKILL);
+  exit(126); 
+}
 
