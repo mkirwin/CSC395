@@ -8,11 +8,13 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/user.h>
-bool canFork = true;
+
+// GLOBAL BOOLEANS FOR SANDBOXING OPTIONS
+bool canFork = false;
 bool canExec = true; // TODO: allow first exec.
-bool canRead = true; // TODO: check directory?
+bool canRead = false; // TODO: check directory?
 bool canWrite = true; // TODO: Check rw and directory?
-bool canSignal = true;
+bool canSignal = false;
 
 void handle_forbidden(size_t syscall_num, char* error_msg, pid_t pid);
 void parse_args(int argc, char** argv, bool* canFork, bool* canExec, bool* canRead, bool* canWrite, bool* canSignal);
