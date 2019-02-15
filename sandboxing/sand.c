@@ -8,8 +8,8 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/user.h>
-bool canFork = false;
-bool canExec = false; // TODO: allow first exec.
+bool canFork = true;
+bool canExec = true; // TODO: allow first exec.
 bool canRead = true; // TODO: check directory?
 bool canWrite = true; // TODO: Check rw and directory?
 bool canSignal = true;
@@ -43,17 +43,19 @@ void parse_args(int argc, char** argv, bool* canFork, bool* canExec, bool* canRe
     } else if (strcmp(argv[i], "--signal") == 0) {
       *canSignal = true;
       printf("canSignal SET TO TRUE.\n");
+    } else if (strcmp(argv[i], "---") == 0) { // [..., --, ls, ...]
+      int start = i+1;
+      if (argc > 1 ) {
+        if (execvp(argv[i+1], &(argv[i+1]))) {
+          perror("execvp failed");
+          exit(2);
+        }
+      } else {
+        printf("No program selected to run in sandbox. No arguments given to sand.\n");  
+      }
     }
+    // TODO: use --- to indicate program and other arguments are coming (at the end). Need to have an index to just run execvp on the array starting there. 
   }
-  if (argc > 1) { // change this so "1" is really where the stuff starts.
-    if (execvp(argv[1], &(argv[1]))) {
-      perror("execvp failed");
-      exit(2);
-    }
-  } else {
-    printf("No program selected to run in sandbox. No arguments given to sand.\n");  
-  }
-
 }
 
 int main(int argc, char** argv) {
@@ -78,21 +80,6 @@ int main(int argc, char** argv) {
     //       As an example, just run `ls`.
 
     parse_args(argc, argv, &canFork, &canExec, &canRead, &canWrite, &canSignal); // ** HERE ***
-    /* // code inline, rather than in a function
-       if (argc > 1) {
-
-       if (execvp(argv[1], &(argv[1]))) {
-       perror("execvp failed");
-       exit(2);
-       }
-       } else {
-       perror("No program provided to sandbox/Not enough arguments.");
-       }
-       if (execlp("ls", "ls", "-a", NULL)) {
-       perror("execlp failed");
-       exit(2);
-       }
-       */
 
   } else { // Parent Code
     // Wait for the child to stop
