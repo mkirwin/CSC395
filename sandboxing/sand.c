@@ -71,6 +71,7 @@ char** parse_args(int argc, char** argv, char* readPath, char* writePath) {
          perror("No directory provided to read-write flag.");
          }
          */
+
     } else if (strcmp(argv[i], "--signal") == 0) {
       canSignal = true;
       printf("canSignal SET TO TRUE.\n");
@@ -207,20 +208,20 @@ int main(int argc, char** argv) {
 
 */
             case 2 : // (open) --> will branch to read and read-write
-            // TODO: include directory stuff
+              // TODO: include directory stuff
               printf("******rdx: %%rdx: 0x%llx\n", regs.rdx);
               /*
-              if (regs.rdx & O_RDONLY) { // Child is attempting to read
-                if (!canRead) { handle_forbidden(syscall_num, "read", child_pid); }
-                else { printf("PERMISSION GRANTED TO READ\n"); }
-              } 
+                 if (regs.rdx & O_RDONLY) { // Child is attempting to read
+                 if (!canRead) { handle_forbidden(syscall_num, "read", child_pid); }
+                 else { printf("PERMISSION GRANTED TO READ\n"); }
+                 } 
 
 
-              if (regs.rdx & O_RDWR) { // Child is attempting to write
-                if (!canWrite) { handle_forbidden(syscall_num, "write", child_pid); }
-                else { printf("PERMISSION GRANTED TO WRITE\n"); }
-              } 
-*/
+                 if (regs.rdx & O_RDWR) { // Child is attempting to write
+                 if (!canWrite) { handle_forbidden(syscall_num, "write", child_pid); }
+                 else { printf("PERMISSION GRANTED TO WRITE\n"); }
+                 } 
+                 */
               break;
 
             case 80 : // (chdir) Change directory
@@ -269,7 +270,7 @@ int main(int argc, char** argv) {
 
             case 41 : // (socket) TODO: Do i need to block whole range? thru 55
               if (!canSocket) {
-              handle_forbidden(syscall_num, "perform a socket operation", child_pid);
+                handle_forbidden(syscall_num, "perform a socket operation", child_pid);
               } else {
                 printf("PERMISSION GRANTED TO PERFORM SOCKET OPERATIONS.\n");
               }
