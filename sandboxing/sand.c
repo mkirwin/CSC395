@@ -8,6 +8,7 @@
 #include <sys/wait.h>
 #include <sys/types.h>
 #include <sys/user.h>
+#include <fcntl.h>
 
 // GLOBAL BOOLEANS FOR SANDBOXING OPTIONS
 bool canFork = false;
@@ -15,6 +16,7 @@ bool canExec = false; // TODO: allow first exec.
 bool canRead = false; // TODO: check directory?
 bool canWrite = false; // TODO: Check rw and directory?
 bool canSignal = false;
+bool canSocket = false;
 
 //char** readPaths = char[10][100];
 //char** writePaths = char[10][100];
@@ -54,6 +56,9 @@ char** parse_args(int argc, char** argv, char* readPath, char* writePath) {
          }
 
 */
+    } else if (strcmp(argv[i], "--socket") == 0) {
+      canSocket = true;
+      printf("canSocket SET TO TRUE.\n");
     } else if (strcmp(argv[i], "--read-write") == 0) { //TODO, probably need to combine read and write cases.
       canWrite = true;
       printf("canWrite SET TO TRUE.\n");
@@ -76,10 +81,8 @@ char** parse_args(int argc, char** argv, char* readPath, char* writePath) {
     }
     if (strcmp(argv[i], "---") == 0) { // [..., --, ls, ...]
       hasSeenProgram = true;
-      int start = i+1;
       if (argc > 1 ) { // TODO: better condition here
         return &(argv[i+1]); 
-
       } else {
         printf("Must include an arguments after '---' flag.\n");  
       }
@@ -87,6 +90,7 @@ char** parse_args(int argc, char** argv, char* readPath, char* writePath) {
     // TODO: use --- to indicate program and other arguments are coming (at the end). Need to have an index to just run execvp on the array starting there. 
   } // end: for-loop
   if (!hasSeenProgram) { printf("No program selected to run in sandbox.\n"); }
+  return argv;
 }
 
 int main(int argc, char** argv) {
@@ -203,11 +207,20 @@ int main(int argc, char** argv) {
 
 */
             case 2 : // (open) --> will branch to read and read-write
+            // TODO: include directory stuff
               printf("******rdx: %%rdx: 0x%llx\n", regs.rdx);
-              if (!canRead && regs.rdx == 0 /*TODO: read and 1 = rdx */) {
-              } else if (!canWrite && 1 /*TODO: read-write and 1 = rdx? */) {
+              /*
+              if (regs.rdx & O_RDONLY) { // Child is attempting to read
+                if (!canRead) { handle_forbidden(syscall_num, "read", child_pid); }
+                else { printf("PERMISSION GRANTED TO READ\n"); }
+              } 
 
-              }
+
+              if (regs.rdx & O_RDWR) { // Child is attempting to write
+                if (!canWrite) { handle_forbidden(syscall_num, "write", child_pid); }
+                else { printf("PERMISSION GRANTED TO WRITE\n"); }
+              } 
+*/
               break;
 
             case 80 : // (chdir) Change directory
@@ -255,7 +268,11 @@ int main(int argc, char** argv) {
               break;
 
             case 41 : // (socket) TODO: Do i need to block whole range? thru 55
+              if (!canSocket) {
               handle_forbidden(syscall_num, "perform a socket operation", child_pid);
+              } else {
+                printf("PERMISSION GRANTED TO PERFORM SOCKET OPERATIONS.\n");
+              }
               break;
 
           }
