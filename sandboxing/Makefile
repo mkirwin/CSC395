@@ -1,11 +1,11 @@
 CC=clang
-CFLAGS="-Wall"
+CFLAGS= -Wall #-fsanitize=address
 
 sand: sand.o
-	$(CC) -o sand sand.o
+	$(CC) $(CFLAGS) -o sand sand.o
 
 sand.o: sand.c
-	cc -c sand.c
+	$(CC) $(CFLAGS) -c sand.c
 
 clean:
 	rm sand.o
