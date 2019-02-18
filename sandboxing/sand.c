@@ -11,15 +11,18 @@
 
 // GLOBAL BOOLEANS FOR SANDBOXING OPTIONS
 bool canFork = false;
-bool canExec = true; // TODO: allow first exec.
+bool canExec = false; // TODO: allow first exec.
 bool canRead = false; // TODO: check directory?
-bool canWrite = true; // TODO: Check rw and directory?
+bool canWrite = false; // TODO: Check rw and directory?
 bool canSignal = false;
 
-void handle_forbidden(size_t syscall_num, char* error_msg, pid_t pid);
-void parse_args(int argc, char** argv, bool* canFork, bool* canExec, bool* canRead, bool* canWrite, bool* canSignal);
+//char** readPaths = char[10][100];
+//char** writePaths = char[10][100];
 
-void parse_args(int argc, char** argv, bool* canFork, bool* canExec, bool* canRead, bool* canWrite, bool* canSignal) {
+void handle_forbidden(size_t syscall_num, char* error_msg, pid_t pid);
+char** parse_args(int argc, char** argv, char* readPath, char* writePath); 
+
+char** parse_args(int argc, char** argv, char* readPath, char* writePath) {
   printf("******%d arguments total.********\n", argc);
   for (int i = 0; i <= argc; i++) {
     printf(argv[i]);
@@ -28,45 +31,78 @@ void parse_args(int argc, char** argv, bool* canFork, bool* canExec, bool* canRe
     if (argv[i] == NULL) printf("NULL");
   }
   printf("\n");
+
   /////////////////////////////////////////////////////////////////////////
+  bool hasSeenProgram = false;
   for (int i = 1; i < argc; i++) {
     if (strcmp(argv[i], "--fork") == 0) {
-      *canFork = true;
+      canFork = true;
       printf("canFork SET TO TRUE.\n");
     } else if (strcmp(argv[i], "--exec") == 0) {
-      *canExec = true;
+      canExec = true;
       printf("canExec SET TO TRUE.\n");
     } else if (strcmp(argv[i], "--read") == 0) {
-      *canRead = true;
+      canRead = true;
       printf("canRead SET TO TRUE.\n");
+      /*
+         if (argv[i+1] != NULL && 
+         strcmp(argv[i+1], "--") != 0 && 
+         strcmp(argv[i+1], "---") != 0 ) {.\
+         readPath = argv[i+1];
+         } else {
+         perror("No directory provided to read flag.");
+         }
+
+*/
     } else if (strcmp(argv[i], "--read-write") == 0) { //TODO, probably need to combine read and write cases.
-      *canWrite = true;
+      canWrite = true;
       printf("canWrite SET TO TRUE.\n");
+      /*
+         if (argv[i+1] != NULL && 
+         strcmp(argv[i+1], "--") != 0 && 
+         strcmp(argv[i+1], "---") != 0 ) {
+         writePath = argv[i+1];
+         } else {
+         perror("No directory provided to read-write flag.");
+         }
+         */
     } else if (strcmp(argv[i], "--signal") == 0) {
-      *canSignal = true;
+      canSignal = true;
       printf("canSignal SET TO TRUE.\n");
-    } else if (strcmp(argv[i], "---") == 0) { // [..., --, ls, ...]
+    } 
+
+    if (readPath || writePath) {
+      printf("\n\n(PATHS) %d: readPath = %s, writePath = %s\n", i, readPath, writePath);
+    }
+    if (strcmp(argv[i], "---") == 0) { // [..., --, ls, ...]
+      hasSeenProgram = true;
       int start = i+1;
-      if (argc > 1 ) {
-        if (execvp(argv[i+1], &(argv[i+1]))) {
-          perror("execvp failed");
-          exit(2);
-        }
+      if (argc > 1 ) { // TODO: better condition here
+        return &(argv[i+1]); 
+
       } else {
-        printf("No program selected to run in sandbox. No arguments given to sand.\n");  
+        printf("Must include an arguments after '---' flag.\n");  
       }
     }
     // TODO: use --- to indicate program and other arguments are coming (at the end). Need to have an index to just run execvp on the array starting there. 
-  }
+  } // end: for-loop
+  if (!hasSeenProgram) { printf("No program selected to run in sandbox.\n"); }
 }
 
 int main(int argc, char** argv) {
+  char* readPath = malloc(sizeof(char) *100); 
+  char* writePath = malloc(sizeof(char) *100); 
+  char** partToExecute = parse_args(argc, argv, readPath, writePath); // ** HERE ***
+  // TODO: CALL PARSE ARGS
+
   // Call fork to create a child process
   pid_t child_pid = fork();
   if(child_pid == -1) {
     perror("fork failed");
     exit(2);
   }
+
+  // TODO: paths for read and write permissions
 
   // If this is the child, ask to be traced
   if(child_pid == 0) {
@@ -79,9 +115,10 @@ int main(int argc, char** argv) {
     raise(SIGSTOP);
 
     // TODO: Do some work in the sandboxed child process here
-    //       As an example, just run `ls`.
-
-    parse_args(argc, argv, &canFork, &canExec, &canRead, &canWrite, &canSignal); // ** HERE ***
+    if (execvp(partToExecute[0], partToExecute)) {
+      perror("execvp failed");
+      exit(2);
+    }
 
   } else { // Parent Code
     // Wait for the child to stop
@@ -120,7 +157,6 @@ int main(int argc, char** argv) {
       }
 
       // Wait for something to happen in the child process. 
-
       if(WIFEXITED(status)) {
         printf("Child exited with status %d\n", WEXITSTATUS(status));
         running = false;
@@ -148,19 +184,29 @@ int main(int argc, char** argv) {
           // TODO: if disallowed syscall_num, then run through forbidden. Else, run the system call.
           switch (syscall_num) {
 
-            case 0 : // (read) Read file
-              if (!canRead) {
-                handle_forbidden(syscall_num, "read", child_pid);
-              } else {
-                printf("PERMISSION GRANTED TO READ\n");
-              }
-              break;
+            /*
+               case 0 : // (read) Read file
+               if (!canRead) {
+               handle_forbidden(syscall_num, "read", child_pid);
+               } else {
+               printf("PERMISSION GRANTED TO READ\n");
+               }
+               break;
 
-            case 1 : // (write) Write file
-              if (!canWrite) {
-                handle_forbidden(syscall_num, "write", child_pid);
-              } else {
-                printf("PERMISSION GRANTED TO WRITE\n");
+               case 1 : // (write) Write file
+               if (!canWrite) {
+               handle_forbidden(syscall_num, "write", child_pid);
+               } else {
+               printf("PERMISSION GRANTED TO WRITE\n");
+               }
+               break;
+
+*/
+            case 2 : // (open) --> will branch to read and read-write
+              printf("******rdx: %%rdx: 0x%llx\n", regs.rdx);
+              if (!canRead && regs.rdx == 0 /*TODO: read and 1 = rdx */) {
+              } else if (!canWrite && 1 /*TODO: read-write and 1 = rdx? */) {
+
               }
               break;
 
