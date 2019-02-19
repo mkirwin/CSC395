@@ -37,13 +37,13 @@ char** parse_args(int argc, char** argv, char* readPath, char* writePath) {
   /////////////////////////////////////////////////////////////////////////
   bool hasSeenProgram = false;
   for (int i = 1; i < argc; i++) {
-    if (strcmp(argv[i], "--fork") == 0) {
+    if (strcmp(argv[i], "--fork") == 0) { // enable forking
       canFork = true;
       printf("canFork SET TO TRUE.\n");
-    } else if (strcmp(argv[i], "--exec") == 0) {
+    } else if (strcmp(argv[i], "--exec") == 0) { // enable exec calls
       canExec = true;
       printf("canExec SET TO TRUE.\n");
-    } else if (strcmp(argv[i], "--read") == 0) {
+    } else if (strcmp(argv[i], "--read") == 0) { // enable read access to select directories
       canRead = true;
       printf("canRead SET TO TRUE.\n");
       /*
@@ -56,10 +56,11 @@ char** parse_args(int argc, char** argv, char* readPath, char* writePath) {
          }
 
 */
-    } else if (strcmp(argv[i], "--socket") == 0) {
+    } else if (strcmp(argv[i], "--socket") == 0) { // enable socket operations
       canSocket = true;
       printf("canSocket SET TO TRUE.\n");
-    } else if (strcmp(argv[i], "--read-write") == 0) { //TODO, probably need to combine read and write cases.
+    } else if (strcmp(argv[i], "--read-write") == 0) { // enable read-write access to select directories
+      //TODO, probably need to combine read and write cases.
       canWrite = true;
       printf("canWrite SET TO TRUE.\n");
       /*
@@ -72,11 +73,12 @@ char** parse_args(int argc, char** argv, char* readPath, char* writePath) {
          }
          */
 
-    } else if (strcmp(argv[i], "--signal") == 0) {
+    } else if (strcmp(argv[i], "--signal") == 0) { // enable signal sending
       canSignal = true;
       printf("canSignal SET TO TRUE.\n");
     } 
 
+    // for printing paths TODO: rm debugging
     if (readPath || writePath) {
       printf("\n\n(PATHS) %d: readPath = %s, writePath = %s\n", i, readPath, writePath);
     }
@@ -213,12 +215,22 @@ int main(int argc, char** argv) {
               printf("******rdx: %%rdx: 0x%llx\n", regs.rdx);
               if (regs.rdx & O_RDONLY) { // Child is attempting to read
                 if (!canRead) { handle_forbidden(syscall_num, "read", child_pid); }
-                else { printf("PERMISSION GRANTED TO READ\n"); }
+                else { 
+                  // 1. PeekData to find out if the address we're trying to read is an allowed directory.
+                  // 2. If it is, then "do nothing" == allow read access. 
+                  // 3. If it is not an allowed directory, call handle_forbidden.
+                  printf("PERMISSION GRANTED TO READ\n"); 
+                }
               } 
 
               if (regs.rdx & O_RDWR) { // Child is attempting to write
                 if (!canWrite) { handle_forbidden(syscall_num, "write", child_pid); }
-                else { printf("PERMISSION GRANTED TO WRITE\n"); }
+                else { 
+                  // 1. PeekData to find out if the address we're trying to read is an allowed directory.
+                  // 2. If it is, then "do nothing" == allow read access. 
+                  // 3. If it is not an allowed directory, call handle_forbidden.
+                  printf("PERMISSION GRANTED TO WRITE\n"); 
+                }
               } 
               break;
 
@@ -290,7 +302,7 @@ int main(int argc, char** argv) {
           last_signal = 0;
         }
       }
-    }
+    } // end: while (running)
 
     return 0;
   }
