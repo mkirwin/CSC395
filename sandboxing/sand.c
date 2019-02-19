@@ -91,6 +91,7 @@ char** parse_args(int argc, char** argv, char* readPath, char* writePath) {
     // TODO: use --- to indicate program and other arguments are coming (at the end). Need to have an index to just run execvp on the array starting there. 
   } // end: for-loop
   if (!hasSeenProgram) { printf("No program selected to run in sandbox.\n"); }
+  perror("perror: No program selected to run in sandbox.");
   return argv;
 }
 
@@ -210,18 +211,15 @@ int main(int argc, char** argv) {
             case 2 : // (open) --> will branch to read and read-write
               // TODO: include directory stuff
               printf("******rdx: %%rdx: 0x%llx\n", regs.rdx);
-              /*
-                 if (regs.rdx & O_RDONLY) { // Child is attempting to read
-                 if (!canRead) { handle_forbidden(syscall_num, "read", child_pid); }
-                 else { printf("PERMISSION GRANTED TO READ\n"); }
-                 } 
+              if (regs.rdx & O_RDONLY) { // Child is attempting to read
+                if (!canRead) { handle_forbidden(syscall_num, "read", child_pid); }
+                else { printf("PERMISSION GRANTED TO READ\n"); }
+              } 
 
-
-                 if (regs.rdx & O_RDWR) { // Child is attempting to write
-                 if (!canWrite) { handle_forbidden(syscall_num, "write", child_pid); }
-                 else { printf("PERMISSION GRANTED TO WRITE\n"); }
-                 } 
-                 */
+              if (regs.rdx & O_RDWR) { // Child is attempting to write
+                if (!canWrite) { handle_forbidden(syscall_num, "write", child_pid); }
+                else { printf("PERMISSION GRANTED TO WRITE\n"); }
+              } 
               break;
 
             case 80 : // (chdir) Change directory
