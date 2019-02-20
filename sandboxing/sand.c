@@ -84,17 +84,21 @@ char** parse_args(int argc, char** argv, char* readPath, char* writePath) {
     }
     if (strcmp(argv[i], "---") == 0) { // [..., --, ls, ...]
       hasSeenProgram = true;
-      if (argc > 1 ) { // TODO: better condition here
+      if (argc > 1 && argv[i+1] != NULL) { // TODO: better condition here
         return &(argv[i+1]); 
       } else {
-        printf("Must include an arguments after '---' flag.\n");  
+        perror("Must include an arguments after '---' flag.\n");  
+        exit(2);
       }
     }
     // TODO: use --- to indicate program and other arguments are coming (at the end). Need to have an index to just run execvp on the array starting there. 
   } // end: for-loop
-  if (!hasSeenProgram) { printf("No program selected to run in sandbox.\n"); }
+  if (!hasSeenProgram) { 
+    perror("No program selected to run in sandbox.\n");
+    exit(2);
+  }
   perror("perror: No program selected to run in sandbox.");
-  return argv;
+  exit(2);
 }
 
 int main(int argc, char** argv) {
@@ -192,24 +196,7 @@ int main(int argc, char** argv) {
           // TODO: if disallowed syscall_num, then run through forbidden. Else, run the system call.
           switch (syscall_num) {
 
-            /*
-               case 0 : // (read) Read file
-               if (!canRead) {
-               handle_forbidden(syscall_num, "read", child_pid);
-               } else {
-               printf("PERMISSION GRANTED TO READ\n");
-               }
-               break;
-
-               case 1 : // (write) Write file
-               if (!canWrite) {
-               handle_forbidden(syscall_num, "write", child_pid);
-               } else {
-               printf("PERMISSION GRANTED TO WRITE\n");
-               }
-               break;
-
-*/
+            // CITATION: Talked to Pouya about ptrace
             case 2 : // (open) --> will branch to read and read-write
               // TODO: include directory stuff
               printf("******rdx: %%rdx: 0x%llx\n", regs.rdx);
@@ -219,6 +206,27 @@ int main(int argc, char** argv) {
                   // 1. PeekData to find out if the address we're trying to read is an allowed directory.
                   // 2. If it is, then "do nothing" == allow read access. 
                   // 3. If it is not an allowed directory, call handle_forbidden.
+                  bool endOfStr = false;
+                  // get a pointer into the child process
+                  long inChild = ptrace(PTRACE_PEEKUSER, child_pid, regs.rdi, 0);
+                  /*
+                     do {
+                     long ret = ptrace(PTRACE_PEEKDATA, child_pid, inChild, NULL); 
+                     } while (i == sizeof(long));
+                     */
+                  
+                  while (!endOfStr) {
+                    long ret = ptrace(PTRACE_PEEKDATA, child_pid, inChild, NULL); 
+                    char* str = (char*) &ret;
+
+                    // check if there is a null in this, if not, call PEEKDATA again.
+                    for (int j = 0; j < sizeof(long); j++) {
+                      if (str[j] == '\0') { endOfStr = true; }
+                      
+                    }
+                  printf("*** %s ***\n", str);
+                  }
+
                   printf("PERMISSION GRANTED TO READ\n"); 
                 }
               } 
@@ -229,6 +237,13 @@ int main(int argc, char** argv) {
                   // 1. PeekData to find out if the address we're trying to read is an allowed directory.
                   // 2. If it is, then "do nothing" == allow read access. 
                   // 3. If it is not an allowed directory, call handle_forbidden.
+
+                  long inChild = ptrace(PTRACE_PEEKUSER, child_pid, regs.rdi, 0);
+                  long ret = ptrace(PTRACE_PEEKDATA, child_pid, inChild, NULL);
+                  char* str = (char*) &ret;
+                  str[8] = '\0';
+                  printf("*** %s ***\n", str);
+                  /*RETURNS SOMETHING HERE*/ptrace(PTRACE_PEEKDATA, child_pid, regs.rdi, NULL /*data*/);
                   printf("PERMISSION GRANTED TO WRITE\n"); 
                 }
               } 
